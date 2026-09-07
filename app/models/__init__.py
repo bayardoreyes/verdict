@@ -3,3 +3,4 @@ from app.models.expense_policy import ExpensePolicy
 from app.models.expense_request import ExpenseRequest
 from app.models.policy_rule import PolicyRule
 from app.models.decision import Decision, DecisionVerdict
+from app.models.audit_log import AuditLog
