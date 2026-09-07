@@ -16,7 +16,7 @@ class Decision(Base):
     id = Column(Integer, primary_key=True)
     request_id = Column(Integer, ForeignKey("expense_requests.id"), nullable=False, unique=True)
     policy_version_id = Column(Integer, ForeignKey("expense_policies.id"), nullable=False)
-    cited_rule_id = Column(Integer, ForeignKey("policy_rules.id"), nullable=False)
+    cited_rule_id = Column(Integer, ForeignKey("policy_rules.id"), nullable=True)
 
     ai_verdict = Column(SqlEnum(DecisionVerdict), nullable=False)
     ai_confidence = Column(Numeric(3, 2), nullable=False)
