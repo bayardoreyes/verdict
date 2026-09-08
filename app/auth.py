@@ -40,3 +40,29 @@ def login(credentials: LoginRequest, db: Session = Depends(get_db)):
 
     token = create_access_token(user)
     return LoginResponse(access_token=token)
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
+security = HTTPBearer()
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> User:
+    secret = os.getenv("JWT_SECRET_KEY")
+    try:
+        payload = jwt.decode(credentials.credentials, secret, algorithms=["HS256"])
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user = db.query(User).filter(User.id == int(payload["sub"])).first()
+    if user is None:
+        raise HTTPException(status_code=401, detail="User no longer exists")
+    return user
+
+
+@router.get("/me", response_model=None)
+def read_current_user(current_user: User = Depends(get_current_user)):
+    return {"id": current_user.id, "email": current_user.email, "role": current_user.role.value}
