@@ -52,6 +52,7 @@ Respond with exactly this JSON shape:
         response.raise_for_status()
         raw_content = response.json()["choices"][0]["message"]["content"]
         parsed = json.loads(raw_content)
+        self.last_raw_response = parsed
 
         cited_rule = None
         if parsed.get("cited_rule_code"):
