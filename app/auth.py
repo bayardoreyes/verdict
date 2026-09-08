@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
+from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -66,3 +67,13 @@ def get_current_user(
 @router.get("/me", response_model=None)
 def read_current_user(current_user: User = Depends(get_current_user)):
     return {"id": current_user.id, "email": current_user.email, "role": current_user.role.value}
+
+def require_role(*allowed_roles: UserRole):
+    def role_checker(current_user: User = Depends(get_current_user)) -> User:
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=403,
+                detail=f"Role '{current_user.role.value}' is not authorized for this action",
+            )
+        return current_user
+    return role_checker
