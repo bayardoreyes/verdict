@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Verdict{% endblock %}
+{% block content %}
+<p>Logged in as <strong>{{ user.email }}</strong> ({{ user.role.value }})</p>
+<p><a href="/logout">Log out</a></p>
+
+{% if user.role.value == "EMPLOYEE" %}
+<h2>Submit an expense</h2>
+<p>(Form coming next)</p>
+{% else %}
+<h2>Review queue</h2>
+<p>(List coming next)</p>
+{% endif %}
+{% endblock %}

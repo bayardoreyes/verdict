@@ -1,14 +1,15 @@
 import os
 import jwt
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.user import User
 from app.models.user import User, UserRole
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+security = HTTPBearer()
 
 
 class LoginRequest(BaseModel):
@@ -32,27 +33,10 @@ def create_access_token(user: User) -> str:
     return jwt.encode(payload, secret, algorithm="HS256")
 
 
-@router.post("/login", response_model=LoginResponse)
-def login(credentials: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == credentials.email).first()
-
-    if user is None or not user.verify_password(credentials.password):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
-
-    token = create_access_token(user)
-    return LoginResponse(access_token=token)
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
-security = HTTPBearer()
-
-
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db),
-) -> User:
+def _decode_token(token: str, db: Session) -> User:
     secret = os.getenv("JWT_SECRET_KEY")
     try:
-        payload = jwt.decode(credentials.credentials, secret, algorithms=["HS256"])
+        payload = jwt.decode(token, secret, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
@@ -64,9 +48,35 @@ def get_current_user(
     return user
 
 
+@router.post("/login", response_model=LoginResponse)
+def login(credentials: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == credentials.email).first()
+
+    if user is None or not user.verify_password(credentials.password):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    token = create_access_token(user)
+    return LoginResponse(access_token=token)
+
+
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> User:
+    return _decode_token(credentials.credentials, db)
+
+
+def get_current_user_from_cookie(request: Request, db: Session = Depends(get_db)) -> User:
+    token = request.cookies.get("access_token")
+    if token is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return _decode_token(token, db)
+
+
 @router.get("/me", response_model=None)
 def read_current_user(current_user: User = Depends(get_current_user)):
     return {"id": current_user.id, "email": current_user.email, "role": current_user.role.value}
+
 
 def require_role(*allowed_roles: UserRole):
     def role_checker(current_user: User = Depends(get_current_user)) -> User:

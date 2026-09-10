@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.user import User
-from app.auth import create_access_token
+from app.auth import create_access_token, get_current_user_from_cookie
 
 router = APIRouter(tags=["pages"])
 templates = Jinja2Templates(directory="app/templates")
@@ -35,3 +35,15 @@ def login_submit(
     response = RedirectResponse(url="/dashboard", status_code=303)
     response.set_cookie(key="access_token", value=token, httponly=True, samesite="lax")
     return response
+
+
+@router.get("/logout")
+def logout():
+    response = RedirectResponse(url="/login", status_code=303)
+    response.delete_cookie("access_token")
+    return response
+
+
+@router.get("/dashboard")
+def dashboard(request: Request, user: User = Depends(get_current_user_from_cookie)):
+    return templates.TemplateResponse(request, "dashboard.html", {"user": user})
