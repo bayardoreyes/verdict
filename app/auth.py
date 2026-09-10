@@ -78,12 +78,18 @@ def read_current_user(current_user: User = Depends(get_current_user)):
     return {"id": current_user.id, "email": current_user.email, "role": current_user.role.value}
 
 
-def require_role(*allowed_roles: UserRole):
-    def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in allowed_roles:
-            raise HTTPException(
-                status_code=403,
-                detail=f"Role '{current_user.role.value}' is not authorized for this action",
-            )
-        return current_user
-    return role_checker
+def _make_role_factory(get_user_dependency):
+    def require_role(*allowed_roles: UserRole):
+        def role_checker(current_user: User = Depends(get_user_dependency)) -> User:
+            if current_user.role not in allowed_roles:
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"Role '{current_user.role.value}' is not authorized for this action",
+                )
+            return current_user
+        return role_checker
+    return require_role
+
+
+require_role = _make_role_factory(get_current_user)
+require_role_cookie = _make_role_factory(get_current_user_from_cookie)

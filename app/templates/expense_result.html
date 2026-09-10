@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Decision - Verdict{% endblock %}
+{% block content %}
+<p><a href="/dashboard">&larr; Back to dashboard</a></p>
+<h2>Decision</h2>
+<p><strong>Category:</strong> {{ expense.category }}</p>
+<p><strong>Amount:</strong> ${{ expense.amount }}</p>
+<p><strong>Verdict:</strong> {{ decision.ai_verdict.value }}</p>
+<p><strong>Confidence:</strong> {{ decision.ai_confidence }}</p>
+<p><strong>Reasoning:</strong> {{ decision.ai_reasoning }}</p>
+{% endblock %}
