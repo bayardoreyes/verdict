@@ -28,6 +28,11 @@ class LLMDecisionEngine(DecisionEngine):
         prompt = f"""You are an expense approval assistant. Given the active policy rules below,
 evaluate this expense request and respond with ONLY a JSON object, no other text.
 
+Business rules for your verdict:
+- If the category matches a rule and the amount is within that rule's max_amount, verdict is APPROVE.
+- If the category matches a rule but the amount EXCEEDS that rule's max_amount, verdict is ESCALATE (never REJECT for this case — a human must review borderline amounts).
+- If no rule covers the category at all, verdict is REJECT.
+
 Active policy rules:
 {rules_context}
 
