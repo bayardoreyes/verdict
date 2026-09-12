@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Decisions Report - Verdict{% endblock %}
+{% block content %}
+<p><a href="/dashboard">&larr; Back to dashboard</a></p>
+<h2>Expense Decisions Report</h2>
+<p>Generated: {{ generated_at }}</p>
+
+{% if decisions %}
+<table class="queue">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Employee</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>AI verdict</th>
+            <th>Current status</th>
+            <th>Reviewer</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for decision in decisions %}
+        <tr>
+            <td><a href="/decisions/{{ decision.id }}">{{ decision.id }}</a></td>
+            <td>{{ decision.request.employee.email }}</td>
+            <td>{{ decision.request.category }}</td>
+            <td>${{ decision.request.amount }}</td>
+            <td>{{ decision.ai_verdict.value }}</td>
+            <td>{{ decision.current_status.value }}</td>
+            <td>{{ decision.reviewer.email if decision.reviewer else "-" }}</td>
+            <td>{{ decision.audit_logs[0].created_at if decision.audit_logs else "-" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No decisions to report.</p>
+{% endif %}
+{% endblock %}

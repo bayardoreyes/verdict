@@ -29,6 +29,7 @@ class Decision(Base):
     policy_version = relationship("ExpensePolicy")
     cited_rule = relationship("PolicyRule")
     reviewer = relationship("User")
+    audit_logs = relationship("AuditLog", order_by="AuditLog.created_at", viewonly=True)
 
     def __repr__(self):
         return f"<Decision id={self.id} verdict={self.ai_verdict} status={self.current_status}>"

@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -144,4 +145,24 @@ def decision_detail_page(
         request,
         "decision_detail.html",
         {"decision": decision, "audit_entries": audit_entries},
+    )
+
+
+@router.get("/reports/decisions")
+def decisions_report_page(
+    request: Request,
+    user: User = Depends(get_current_user_from_cookie),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Decision).join(ExpenseRequest)
+
+    if user.role == UserRole.EMPLOYEE:
+        query = query.filter(ExpenseRequest.employee_id == user.id)
+
+    decisions = query.order_by(Decision.id.desc()).all()
+
+    return templates.TemplateResponse(
+        request,
+        "report_decisions.html",
+        {"decisions": decisions, "generated_at": datetime.now()},
     )
