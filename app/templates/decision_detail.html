@@ -23,6 +23,13 @@
 <p><strong>Reviewed by:</strong> {{ decision.reviewer.email }}</p>
 {% endif %}
 
+{% if user.role.value == "EMPLOYEE" and decision.request.employee_id == user.id and decision.reviewer_id is none %}
+<p><a href="/expense-requests/{{ decision.request_id }}/edit">Edit this expense</a></p>
+<form method="post" action="/expense-requests/{{ decision.request_id }}/delete" onsubmit="return confirm('Delete this expense request? This cannot be undone.');">
+    <button type="submit" class="danger">Delete this expense</button>
+</form>
+{% endif %}
+
 <h3>Audit log</h3>
 {% if audit_entries %}
 <table class="queue">

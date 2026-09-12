@@ -108,6 +108,88 @@ def new_expense_submit(
     )
 
 
+def _get_own_expense_or_403(request_id: int, user: User, db: Session) -> ExpenseRequest:
+    expense = db.query(ExpenseRequest).filter(ExpenseRequest.id == request_id).first()
+    if expense is None:
+        raise HTTPException(status_code=404, detail="Expense request not found")
+    if expense.employee_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this expense")
+    return expense
+
+
+def _get_editable_decision_or_403(request_id: int, db: Session) -> Decision | None:
+    decision = db.query(Decision).filter(Decision.request_id == request_id).first()
+    if decision is not None and decision.reviewer_id is not None:
+        raise HTTPException(
+            status_code=403,
+            detail="Cannot modify an expense that has already been reviewed by a human",
+        )
+    return decision
+
+
+@router.get("/expense-requests/{request_id}/edit")
+def edit_expense_page(
+    request_id: int,
+    request: Request,
+    user: User = Depends(require_role_cookie(UserRole.EMPLOYEE)),
+    db: Session = Depends(get_db),
+):
+    expense = _get_own_expense_or_403(request_id, user, db)
+    decision = _get_editable_decision_or_403(request_id, db)
+
+    return templates.TemplateResponse(
+        request, "edit_expense.html", {"expense": expense, "decision": decision, "error": None}
+    )
+
+
+@router.post("/expense-requests/{request_id}/edit")
+def edit_expense_submit(
+    request_id: int,
+    request: Request,
+    category: str = Form(...),
+    amount: Decimal = Form(...),
+    description: str = Form(""),
+    user: User = Depends(require_role_cookie(UserRole.EMPLOYEE)),
+    db: Session = Depends(get_db),
+):
+    expense = _get_own_expense_or_403(request_id, user, db)
+    decision = _get_editable_decision_or_403(request_id, db)
+
+    expense.category = category
+    expense.amount = amount
+    expense.description = description or None
+    db.commit()
+
+    if decision is not None:
+        db.query(AuditLog).filter(AuditLog.decision_id == decision.id).delete()
+        db.delete(decision)
+        db.commit()
+
+    new_decision = evaluate_expense_request(expense, db)
+
+    return templates.TemplateResponse(
+        request, "expense_result.html", {"expense": expense, "decision": new_decision}
+    )
+
+
+@router.post("/expense-requests/{request_id}/delete")
+def delete_expense_request(
+    request_id: int,
+    user: User = Depends(require_role_cookie(UserRole.EMPLOYEE)),
+    db: Session = Depends(get_db),
+):
+    expense = _get_own_expense_or_403(request_id, user, db)
+    decision = _get_editable_decision_or_403(request_id, db)
+
+    if decision is not None:
+        db.query(AuditLog).filter(AuditLog.decision_id == decision.id).delete()
+        db.delete(decision)
+
+    db.delete(expense)
+    db.commit()
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+
 @router.post("/decisions/{decision_id}/review")
 def review_decision_form(
     decision_id: int,
@@ -147,7 +229,7 @@ def decision_detail_page(
     return templates.TemplateResponse(
         request,
         "decision_detail.html",
-        {"decision": decision, "audit_entries": audit_entries},
+        {"decision": decision, "audit_entries": audit_entries, "user": user},
     )
 
 

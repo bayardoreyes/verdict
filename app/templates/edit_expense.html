@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Edit Expense - Verdict{% endblock %}
+{% block content %}
+{% if decision %}
+<p><a href="/decisions/{{ decision.id }}">&larr; Cancel</a></p>
+{% else %}
+<p><a href="/dashboard">&larr; Cancel</a></p>
+{% endif %}
+<h2>Edit expense</h2>
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+<form method="post" action="/expense-requests/{{ expense.id }}/edit">
+    <label>Category</label>
+    <select name="category" required>
+        <option value="meals" {% if expense.category == "meals" %}selected{% endif %}>Meals</option>
+        <option value="travel" {% if expense.category == "travel" %}selected{% endif %}>Travel</option>
+        <option value="office_supplies" {% if expense.category == "office_supplies" %}selected{% endif %}>Office Supplies</option>
+        <option value="software" {% if expense.category == "software" %}selected{% endif %}>Software</option>
+        <option value="lodging" {% if expense.category == "lodging" %}selected{% endif %}>Lodging</option>
+        <option value="mileage" {% if expense.category == "mileage" %}selected{% endif %}>Mileage</option>
+        <option value="client_entertainment" {% if expense.category == "client_entertainment" %}selected{% endif %}>Client Entertainment</option>
+        <option value="conference_registration" {% if expense.category == "conference_registration" %}selected{% endif %}>Conference Registration</option>
+    </select>
+    <label>Amount</label>
+    <input type="number" name="amount" step="0.01" min="0.01" value="{{ expense.amount }}" required>
+    <label>Description</label>
+    <input type="text" name="description" value="{{ expense.description or '' }}">
+    <button type="submit">Save changes</button>
+</form>
+{% endblock %}
