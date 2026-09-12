@@ -28,6 +28,10 @@
                         <option value="travel" {% if rule.category == "travel" %}selected{% endif %}>Travel</option>
                         <option value="office_supplies" {% if rule.category == "office_supplies" %}selected{% endif %}>Office Supplies</option>
                         <option value="software" {% if rule.category == "software" %}selected{% endif %}>Software</option>
+                        <option value="lodging" {% if rule.category == "lodging" %}selected{% endif %}>Lodging</option>
+                        <option value="mileage" {% if rule.category == "mileage" %}selected{% endif %}>Mileage</option>
+                        <option value="client_entertainment" {% if rule.category == "client_entertainment" %}selected{% endif %}>Client Entertainment</option>
+                        <option value="conference_registration" {% if rule.category == "conference_registration" %}selected{% endif %}>Conference Registration</option>
                     </select>
             </td>
             <td>
@@ -55,6 +59,10 @@
         <option value="travel">Travel</option>
         <option value="office_supplies">Office Supplies</option>
         <option value="software">Software</option>
+        <option value="lodging">Lodging</option>
+        <option value="mileage">Mileage</option>
+        <option value="client_entertainment">Client Entertainment</option>
+        <option value="conference_registration">Conference Registration</option>
     </select>
     <label>Max amount</label>
     <input type="number" name="max_amount" step="0.01" min="0.01" required>
