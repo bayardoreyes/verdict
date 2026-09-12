@@ -246,10 +246,31 @@ def decisions_report_page(
 
     decisions = query.order_by(Decision.id.desc()).all()
 
+    firm_decisions = [d for d in decisions if d.ai_verdict != DecisionVerdict.ESCALATE]
+    agreed_firm = [d for d in firm_decisions if d.current_status == d.ai_verdict]
+    agreement_rate = (
+        round(len(agreed_firm) / len(firm_decisions) * 100, 1) if firm_decisions else None
+    )
+
+    escalated = [d for d in decisions if d.ai_verdict == DecisionVerdict.ESCALATE]
+    escalated_pending = [d for d in escalated if d.current_status == DecisionVerdict.ESCALATE]
+    escalated_approved = [d for d in escalated if d.current_status == DecisionVerdict.APPROVE]
+    escalated_rejected = [d for d in escalated if d.current_status == DecisionVerdict.REJECT]
+
     return templates.TemplateResponse(
         request,
         "report_decisions.html",
-        {"decisions": decisions, "generated_at": datetime.now()},
+        {
+            "decisions": decisions,
+            "generated_at": datetime.now(),
+            "firm_count": len(firm_decisions),
+            "agreed_count": len(agreed_firm),
+            "agreement_rate": agreement_rate,
+            "escalated_count": len(escalated),
+            "escalated_pending_count": len(escalated_pending),
+            "escalated_approved_count": len(escalated_approved),
+            "escalated_rejected_count": len(escalated_rejected),
+        },
     )
 
 

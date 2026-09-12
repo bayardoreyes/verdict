@@ -23,6 +23,28 @@
 <p><strong>Reviewed by:</strong> {{ decision.reviewer.email }}</p>
 {% endif %}
 
+{% if user.role.value == "REVIEWER" %}
+<h3>Reviewer actions</h3>
+{% if decision.current_status.value != "APPROVE" %}
+<form class="inline" method="post" action="/decisions/{{ decision.id }}/review">
+    <input type="hidden" name="new_status" value="APPROVE">
+    <button type="submit">Set to Approve</button>
+</form>
+{% endif %}
+{% if decision.current_status.value != "REJECT" %}
+<form class="inline" method="post" action="/decisions/{{ decision.id }}/review">
+    <input type="hidden" name="new_status" value="REJECT">
+    <button type="submit" class="danger">Set to Reject</button>
+</form>
+{% endif %}
+{% if decision.current_status.value != "ESCALATE" %}
+<form class="inline" method="post" action="/decisions/{{ decision.id }}/review">
+    <input type="hidden" name="new_status" value="ESCALATE">
+    <button type="submit">Set to Escalate</button>
+</form>
+{% endif %}
+{% endif %}
+
 {% if user.role.value == "EMPLOYEE" and decision.request.employee_id == user.id and decision.reviewer_id is none %}
 <p><a href="/expense-requests/{{ decision.request_id }}/edit">Edit this expense</a></p>
 <form method="post" action="/expense-requests/{{ decision.request_id }}/delete" onsubmit="return confirm('Delete this expense request? This cannot be undone.');">

@@ -5,6 +5,14 @@
 <h2>Expense Decisions Report</h2>
 <p>Generated: {{ generated_at }}</p>
 
+{% if agreement_rate is not none %}
+<p><strong>AI / reviewer agreement rate:</strong> {{ agreement_rate }}% ({{ agreed_count }} of {{ firm_count }} firm AI verdicts — Approve/Reject — were kept unchanged by a human)</p>
+{% else %}
+<p><strong>AI / reviewer agreement rate:</strong> No firm AI verdicts (Approve/Reject) exist yet to measure.</p>
+{% endif %}
+
+<p><strong>Escalated cases:</strong> {{ escalated_count }} total &mdash; {{ escalated_approved_count }} approved, {{ escalated_rejected_count }} rejected, {{ escalated_pending_count }} still pending human review</p>
+
 {% if decisions %}
 <table class="queue">
     <thead>
