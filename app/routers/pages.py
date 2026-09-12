@@ -7,6 +7,7 @@ from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.expense_request import ExpenseRequest
 from app.models.decision import Decision, DecisionVerdict
+from app.models.audit_log import AuditLog
 from app.auth import create_access_token, get_current_user_from_cookie, require_role_cookie
 from app.services.decision_orchestrator import evaluate_expense_request
 from app.services.review_service import apply_human_review
@@ -116,3 +117,31 @@ def review_decision_form(
 
     apply_human_review(decision, new_status, user, db)
     return RedirectResponse(url="/dashboard", status_code=303)
+
+
+@router.get("/decisions/{decision_id}")
+def decision_detail_page(
+    decision_id: int,
+    request: Request,
+    user: User = Depends(get_current_user_from_cookie),
+    db: Session = Depends(get_db),
+):
+    decision = db.query(Decision).filter(Decision.id == decision_id).first()
+    if decision is None:
+        raise HTTPException(status_code=404, detail="Decision not found")
+
+    if user.role == UserRole.EMPLOYEE and decision.request.employee_id != user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this decision")
+
+    audit_entries = (
+        db.query(AuditLog)
+        .filter(AuditLog.decision_id == decision.id)
+        .order_by(AuditLog.created_at)
+        .all()
+    )
+
+    return templates.TemplateResponse(
+        request,
+        "decision_detail.html",
+        {"decision": decision, "audit_entries": audit_entries},
+    )

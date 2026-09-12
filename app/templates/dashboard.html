@@ -26,7 +26,7 @@
     <tbody>
         {% for decision in review_queue %}
         <tr>
-            <td>{{ decision.id }}</td>
+            <td><a href="/decisions/{{ decision.id }}">{{ decision.id }}</a></td>
             <td>{{ decision.request.employee.email }}</td>
             <td>{{ decision.request.category }}</td>
             <td>${{ decision.request.amount }}</td>
