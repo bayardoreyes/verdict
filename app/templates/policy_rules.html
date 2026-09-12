@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Policy Rules - Verdict{% endblock %}
+{% block content %}
+<p><a href="/dashboard">&larr; Back to dashboard</a></p>
+<h2>Policy Rules (v{{ policy.version_number }})</h2>
+
+{% if error %}
+<p class="error">{{ error }}</p>
+{% endif %}
+
+<table class="queue">
+    <thead>
+        <tr>
+            <th>Rule code</th>
+            <th>Category</th>
+            <th>Max amount</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for rule in rules %}
+        <tr>
+            <td>{{ rule.rule_code }}</td>
+            <td>
+                <form class="inline" method="post" action="/policy-rules/{{ rule.id }}/edit">
+                    <select name="category" required>
+                        <option value="meals" {% if rule.category == "meals" %}selected{% endif %}>Meals</option>
+                        <option value="travel" {% if rule.category == "travel" %}selected{% endif %}>Travel</option>
+                        <option value="office_supplies" {% if rule.category == "office_supplies" %}selected{% endif %}>Office Supplies</option>
+                        <option value="software" {% if rule.category == "software" %}selected{% endif %}>Software</option>
+                    </select>
+            </td>
+            <td>
+                    <input type="number" name="max_amount" step="0.01" min="0.01" value="{{ rule.max_amount }}" required>
+            </td>
+            <td class="actions">
+                    <button type="submit">Save</button>
+                </form>
+                <form class="inline" method="post" action="/policy-rules/{{ rule.id }}/delete">
+                    <button type="submit" class="danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h3>Add new rule</h3>
+<form method="post" action="/policy-rules">
+    <label>Rule code</label>
+    <input type="text" name="rule_code" maxlength="20" required>
+    <label>Category</label>
+    <select name="category" required>
+        <option value="meals">Meals</option>
+        <option value="travel">Travel</option>
+        <option value="office_supplies">Office Supplies</option>
+        <option value="software">Software</option>
+    </select>
+    <label>Max amount</label>
+    <input type="number" name="max_amount" step="0.01" min="0.01" required>
+    <button type="submit">Add rule</button>
+</form>
+{% endblock %}

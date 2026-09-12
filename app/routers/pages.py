@@ -3,12 +3,15 @@ from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 from decimal import Decimal
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.expense_request import ExpenseRequest
 from app.models.decision import Decision, DecisionVerdict
 from app.models.audit_log import AuditLog
+from app.models.expense_policy import ExpensePolicy
+from app.models.policy_rule import PolicyRule
 from app.auth import create_access_token, get_current_user_from_cookie, require_role_cookie
 from app.services.decision_orchestrator import evaluate_expense_request
 from app.services.review_service import apply_human_review
@@ -166,3 +169,95 @@ def decisions_report_page(
         "report_decisions.html",
         {"decisions": decisions, "generated_at": datetime.now()},
     )
+
+
+def _get_active_policy_or_404(db: Session) -> ExpensePolicy:
+    policy = db.query(ExpensePolicy).filter(ExpensePolicy.is_active == True).first()
+    if policy is None:
+        raise HTTPException(status_code=404, detail="No active policy configured")
+    return policy
+
+
+@router.get("/policy-rules")
+def policy_rules_page(
+    request: Request,
+    error: str | None = None,
+    user: User = Depends(require_role_cookie(UserRole.REVIEWER)),
+    db: Session = Depends(get_db),
+):
+    policy = _get_active_policy_or_404(db)
+    rules = (
+        db.query(PolicyRule)
+        .filter(PolicyRule.policy_id == policy.id)
+        .order_by(PolicyRule.rule_code)
+        .all()
+    )
+    return templates.TemplateResponse(
+        request,
+        "policy_rules.html",
+        {"policy": policy, "rules": rules, "error": error},
+    )
+
+
+@router.post("/policy-rules")
+def create_policy_rule(
+    rule_code: str = Form(...),
+    category: str = Form(...),
+    max_amount: Decimal = Form(...),
+    user: User = Depends(require_role_cookie(UserRole.REVIEWER)),
+    db: Session = Depends(get_db),
+):
+    policy = _get_active_policy_or_404(db)
+    new_rule = PolicyRule(
+        policy_id=policy.id, rule_code=rule_code, category=category, max_amount=max_amount
+    )
+    db.add(new_rule)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return RedirectResponse(
+            url="/policy-rules?error=A rule with that code already exists for this policy",
+            status_code=303,
+        )
+    return RedirectResponse(url="/policy-rules", status_code=303)
+
+
+@router.post("/policy-rules/{rule_id}/edit")
+def edit_policy_rule(
+    rule_id: int,
+    category: str = Form(...),
+    max_amount: Decimal = Form(...),
+    user: User = Depends(require_role_cookie(UserRole.REVIEWER)),
+    db: Session = Depends(get_db),
+):
+    rule = db.query(PolicyRule).filter(PolicyRule.id == rule_id).first()
+    if rule is None:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+    rule.category = category
+    rule.max_amount = max_amount
+    db.commit()
+    return RedirectResponse(url="/policy-rules", status_code=303)
+
+
+@router.post("/policy-rules/{rule_id}/delete")
+def delete_policy_rule(
+    rule_id: int,
+    user: User = Depends(require_role_cookie(UserRole.REVIEWER)),
+    db: Session = Depends(get_db),
+):
+    rule = db.query(PolicyRule).filter(PolicyRule.id == rule_id).first()
+    if rule is None:
+        raise HTTPException(status_code=404, detail="Rule not found")
+
+    db.delete(rule)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        return RedirectResponse(
+            url="/policy-rules?error=Cannot delete a rule already cited by past decisions",
+            status_code=303,
+        )
+    return RedirectResponse(url="/policy-rules", status_code=303)
