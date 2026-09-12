@@ -1,6 +1,6 @@
 body {
     font-family: Arial, sans-serif;
-    max-width: 600px;
+    max-width: 1000px;
     margin: 40px auto;
     padding: 0 20px;
     color: #222;
@@ -36,4 +36,45 @@ button:hover {
 
 .error {
     color: #b00020;
+}
+
+table.queue {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+}
+
+table.queue th,
+table.queue td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: left;
+    vertical-align: top;
+}
+
+table.queue th {
+    background-color: #1a3c5e;
+    color: #fff;
+}
+
+td.reasoning {
+    max-width: 340px;
+}
+
+td.actions {
+    white-space: nowrap;
+}
+
+form.inline {
+    display: inline-block;
+    max-width: none;
+    margin: 0 4px 0 0;
+}
+
+button.danger {
+    background-color: #b00020;
+}
+
+button.danger:hover {
+    background-color: #8a0018;
 }

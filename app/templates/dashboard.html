@@ -9,6 +9,46 @@
 <p><a href="/expense-requests/new">Submit an expense</a></p>
 {% else %}
 <h2>Review queue</h2>
-<p>(List coming next)</p>
+{% if review_queue %}
+<table class="queue">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Employee</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>AI verdict</th>
+            <th>Confidence</th>
+            <th>AI reasoning</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for decision in review_queue %}
+        <tr>
+            <td>{{ decision.id }}</td>
+            <td>{{ decision.request.employee.email }}</td>
+            <td>{{ decision.request.category }}</td>
+            <td>${{ decision.request.amount }}</td>
+            <td>{{ decision.ai_verdict.value }}</td>
+            <td>{{ decision.ai_confidence }}</td>
+            <td class="reasoning">{{ decision.ai_reasoning }}</td>
+            <td class="actions">
+                <form class="inline" method="post" action="/decisions/{{ decision.id }}/review">
+                    <input type="hidden" name="new_status" value="APPROVE">
+                    <button type="submit">Approve</button>
+                </form>
+                <form class="inline" method="post" action="/decisions/{{ decision.id }}/review">
+                    <input type="hidden" name="new_status" value="REJECT">
+                    <button type="submit" class="danger">Reject</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No decisions are waiting for review.</p>
+{% endif %}
 {% endif %}
 {% endblock %}

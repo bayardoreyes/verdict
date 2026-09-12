@@ -8,7 +8,7 @@ from app.auth import get_current_user, require_role
 from app.models.user import User, UserRole
 from app.models.decision import Decision, DecisionVerdict
 from app.models.expense_request import ExpenseRequest
-from app.models.audit_log import AuditLog
+from app.services.review_service import apply_human_review
 
 router = APIRouter(prefix="/decisions", tags=["decisions"])
 
@@ -77,21 +77,7 @@ def review_decision(
     if decision is None:
         raise HTTPException(status_code=404, detail="Decision not found")
 
-    previous_status = decision.current_status.value
-    decision.current_status = review.new_status
-    decision.reviewer_id = current_user.id
-    db.commit()
-    db.refresh(decision)
-
-    audit_entry = AuditLog(
-        decision_id=decision.id,
-        event_type="human_review",
-        actor_id=current_user.id,
-        previous_value=previous_status,
-        new_value=review.new_status.value,
-    )
-    db.add(audit_entry)
-    db.commit()
+    apply_human_review(decision, review.new_status, current_user, db)
 
     return DecisionListItem(
         id=decision.id,

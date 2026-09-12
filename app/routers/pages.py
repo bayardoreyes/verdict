@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, Form
+from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -6,8 +6,10 @@ from decimal import Decimal
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.expense_request import ExpenseRequest
+from app.models.decision import Decision, DecisionVerdict
 from app.auth import create_access_token, get_current_user_from_cookie, require_role_cookie
 from app.services.decision_orchestrator import evaluate_expense_request
+from app.services.review_service import apply_human_review
 
 router = APIRouter(tags=["pages"])
 templates = Jinja2Templates(directory="app/templates")
@@ -48,8 +50,24 @@ def logout():
 
 
 @router.get("/dashboard")
-def dashboard(request: Request, user: User = Depends(get_current_user_from_cookie)):
-    return templates.TemplateResponse(request, "dashboard.html", {"user": user})
+def dashboard(
+    request: Request,
+    user: User = Depends(get_current_user_from_cookie),
+    db: Session = Depends(get_db),
+):
+    review_queue = []
+    if user.role == UserRole.REVIEWER:
+        review_queue = (
+            db.query(Decision)
+            .join(ExpenseRequest)
+            .filter(Decision.current_status == DecisionVerdict.ESCALATE)
+            .order_by(Decision.id.desc())
+            .all()
+        )
+
+    return templates.TemplateResponse(
+        request, "dashboard.html", {"user": user, "review_queue": review_queue}
+    )
 
 
 @router.get("/expense-requests/new")
@@ -83,3 +101,18 @@ def new_expense_submit(
     return templates.TemplateResponse(
         request, "expense_result.html", {"expense": new_request, "decision": decision}
     )
+
+
+@router.post("/decisions/{decision_id}/review")
+def review_decision_form(
+    decision_id: int,
+    new_status: DecisionVerdict = Form(...),
+    user: User = Depends(require_role_cookie(UserRole.REVIEWER)),
+    db: Session = Depends(get_db),
+):
+    decision = db.query(Decision).filter(Decision.id == decision_id).first()
+    if decision is None:
+        raise HTTPException(status_code=404, detail="Decision not found")
+
+    apply_human_review(decision, new_status, user, db)
+    return RedirectResponse(url="/dashboard", status_code=303)
