@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Search Decisions - Verdict{% endblock %}
+{% block content %}
+<p><a href="/dashboard">&larr; Back to dashboard</a></p>
+<h2>Search Decisions</h2>
+
+<form method="get" action="/search">
+    <label>Category</label>
+    <select name="category">
+        <option value="" {% if not category %}selected{% endif %}>All categories</option>
+        <option value="meals" {% if category == "meals" %}selected{% endif %}>Meals</option>
+        <option value="travel" {% if category == "travel" %}selected{% endif %}>Travel</option>
+        <option value="office_supplies" {% if category == "office_supplies" %}selected{% endif %}>Office Supplies</option>
+        <option value="software" {% if category == "software" %}selected{% endif %}>Software</option>
+        <option value="lodging" {% if category == "lodging" %}selected{% endif %}>Lodging</option>
+        <option value="mileage" {% if category == "mileage" %}selected{% endif %}>Mileage</option>
+        <option value="client_entertainment" {% if category == "client_entertainment" %}selected{% endif %}>Client Entertainment</option>
+        <option value="conference_registration" {% if category == "conference_registration" %}selected{% endif %}>Conference Registration</option>
+    </select>
+
+    <label>Status</label>
+    <select name="status">
+        <option value="" {% if not status %}selected{% endif %}>All statuses</option>
+        <option value="APPROVE" {% if status == "APPROVE" %}selected{% endif %}>Approve</option>
+        <option value="REJECT" {% if status == "REJECT" %}selected{% endif %}>Reject</option>
+        <option value="ESCALATE" {% if status == "ESCALATE" %}selected{% endif %}>Escalate</option>
+    </select>
+
+    <label>Min amount</label>
+    <input type="number" name="min_amount" step="0.01" min="0" value="{{ min_amount if min_amount is not none else '' }}">
+
+    <label>Max amount</label>
+    <input type="number" name="max_amount" step="0.01" min="0" value="{{ max_amount if max_amount is not none else '' }}">
+
+    <label>Date from</label>
+    <input type="date" name="date_from" value="{{ date_from or '' }}">
+
+    <label>Date to</label>
+    <input type="date" name="date_to" value="{{ date_to or '' }}">
+
+    <button type="submit">Search</button>
+</form>
+
+{% if searched %}
+<h3>Results</h3>
+{% if decisions %}
+<table class="queue">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Employee</th>
+            <th>Category</th>
+            <th>Amount</th>
+            <th>AI verdict</th>
+            <th>Current status</th>
+            <th>Reviewer</th>
+            <th>Date</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for decision in decisions %}
+        <tr>
+            <td><a href="/decisions/{{ decision.id }}">{{ decision.id }}</a></td>
+            <td>{{ decision.request.employee.email }}</td>
+            <td>{{ decision.request.category }}</td>
+            <td>${{ decision.request.amount }}</td>
+            <td>{{ decision.ai_verdict.value }}</td>
+            <td>{{ decision.current_status.value }}</td>
+            <td>{{ decision.reviewer.email if decision.reviewer else "-" }}</td>
+            <td>{{ decision.audit_logs[0].created_at if decision.audit_logs else "-" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No decisions match your search criteria.</p>
+{% endif %}
+{% endif %}
+{% endblock %}

@@ -3,6 +3,7 @@
 {% block content %}
 <p>Logged in as <strong>{{ user.email }}</strong> ({{ user.role.value }})</p>
 <p><a href="/logout">Log out</a></p>
+<p><a href="/search">Search decisions</a></p>
 <p><a href="/reports/decisions">View decisions report</a></p>
 
 {% if user.role.value == "EMPLOYEE" %}

@@ -1,10 +1,10 @@
-from datetime import datetime
+from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
 from fastapi import APIRouter, Request, Depends, Form, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from decimal import Decimal
 from app.database import get_db
 from app.models.user import User, UserRole
 from app.models.expense_request import ExpenseRequest
@@ -168,6 +168,72 @@ def decisions_report_page(
         request,
         "report_decisions.html",
         {"decisions": decisions, "generated_at": datetime.now()},
+    )
+
+
+@router.get("/search")
+def search_decisions_page(
+    request: Request,
+    category: str = "",
+    status: str = "",
+    min_amount: str = "",
+    max_amount: str = "",
+    date_from: str = "",
+    date_to: str = "",
+    user: User = Depends(get_current_user_from_cookie),
+    db: Session = Depends(get_db),
+):
+    searched = bool(request.query_params)
+
+    query = db.query(Decision).join(ExpenseRequest)
+
+    if user.role == UserRole.EMPLOYEE:
+        query = query.filter(ExpenseRequest.employee_id == user.id)
+
+    if category:
+        query = query.filter(ExpenseRequest.category == category)
+
+    if status:
+        query = query.filter(Decision.current_status == DecisionVerdict[status])
+
+    if min_amount:
+        try:
+            query = query.filter(ExpenseRequest.amount >= Decimal(min_amount))
+        except InvalidOperation:
+            pass
+
+    if max_amount:
+        try:
+            query = query.filter(ExpenseRequest.amount <= Decimal(max_amount))
+        except InvalidOperation:
+            pass
+
+    if date_from or date_to:
+        query = query.join(AuditLog, AuditLog.decision_id == Decision.id).filter(
+            AuditLog.event_type == "decision_generated_by_llm"
+        )
+        if date_from:
+            query = query.filter(AuditLog.created_at >= datetime.fromisoformat(date_from))
+        if date_to:
+            query = query.filter(
+                AuditLog.created_at < datetime.fromisoformat(date_to) + timedelta(days=1)
+            )
+
+    decisions = query.order_by(Decision.id.desc()).all() if searched else []
+
+    return templates.TemplateResponse(
+        request,
+        "search_decisions.html",
+        {
+            "decisions": decisions,
+            "searched": searched,
+            "category": category,
+            "status": status,
+            "min_amount": min_amount,
+            "max_amount": max_amount,
+            "date_from": date_from,
+            "date_to": date_to,
+        },
     )
 
 
