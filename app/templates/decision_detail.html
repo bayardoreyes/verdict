@@ -4,6 +4,10 @@
 <p><a href="/dashboard">&larr; Back to dashboard</a></p>
 <h2>Decision #{{ decision.id }}</h2>
 
+{% if decision.request.deleted_at %}
+<p class="error">This expense request was deleted by the employee on {{ decision.request.deleted_at }}.</p>
+{% endif %}
+
 <p><strong>Employee:</strong> {{ decision.request.employee.email }}</p>
 <p><strong>Category:</strong> {{ decision.request.category }}</p>
 <p><strong>Amount:</strong> ${{ decision.request.amount }}</p>
@@ -45,7 +49,7 @@
 {% endif %}
 {% endif %}
 
-{% if user.role.value == "EMPLOYEE" and decision.request.employee_id == user.id and decision.reviewer_id is none %}
+{% if user.role.value == "EMPLOYEE" and decision.request.employee_id == user.id and decision.reviewer_id is none and not decision.request.deleted_at %}
 <p><a href="/expense-requests/{{ decision.request_id }}/edit">Edit this expense</a></p>
 <form method="post" action="/expense-requests/{{ decision.request_id }}/delete" onsubmit="return confirm('Delete this expense request? This cannot be undone.');">
     <button type="submit" class="danger">Delete this expense</button>

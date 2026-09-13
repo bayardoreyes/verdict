@@ -13,8 +13,10 @@ from app.models.audit_log import AuditLog
 from app.models.expense_policy import ExpensePolicy
 from app.models.policy_rule import PolicyRule
 from app.auth import create_access_token, get_current_user_from_cookie, require_role_cookie
-from app.services.decision_orchestrator import evaluate_expense_request
+from app.services.decision_orchestrator import evaluate_expense_request, re_evaluate_expense_request
 from app.services.review_service import apply_human_review
+
+CREATION_EVENT_TYPES = ("decision_generated_by_llm", "decision_fallback_to_rules")
 
 router = APIRouter(tags=["pages"])
 templates = Jinja2Templates(directory="app/templates")
@@ -65,7 +67,10 @@ def dashboard(
         review_queue = (
             db.query(Decision)
             .join(ExpenseRequest)
-            .filter(Decision.current_status == DecisionVerdict.ESCALATE)
+            .filter(
+                Decision.current_status == DecisionVerdict.ESCALATE,
+                ExpenseRequest.deleted_at.is_(None),
+            )
             .order_by(Decision.id.desc())
             .all()
         )
@@ -135,6 +140,8 @@ def edit_expense_page(
     db: Session = Depends(get_db),
 ):
     expense = _get_own_expense_or_403(request_id, user, db)
+    if expense.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Expense request not found")
     decision = _get_editable_decision_or_403(request_id, db)
 
     return templates.TemplateResponse(
@@ -153,6 +160,8 @@ def edit_expense_submit(
     db: Session = Depends(get_db),
 ):
     expense = _get_own_expense_or_403(request_id, user, db)
+    if expense.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Expense request not found")
     decision = _get_editable_decision_or_403(request_id, db)
 
     expense.category = category
@@ -161,14 +170,12 @@ def edit_expense_submit(
     db.commit()
 
     if decision is not None:
-        db.query(AuditLog).filter(AuditLog.decision_id == decision.id).delete()
-        db.delete(decision)
-        db.commit()
-
-    new_decision = evaluate_expense_request(expense, db)
+        updated_decision = re_evaluate_expense_request(expense, decision, user.id, db)
+    else:
+        updated_decision = evaluate_expense_request(expense, db)
 
     return templates.TemplateResponse(
-        request, "expense_result.html", {"expense": expense, "decision": new_decision}
+        request, "expense_result.html", {"expense": expense, "decision": updated_decision}
     )
 
 
@@ -179,14 +186,24 @@ def delete_expense_request(
     db: Session = Depends(get_db),
 ):
     expense = _get_own_expense_or_403(request_id, user, db)
+    if expense.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Expense request not found")
     decision = _get_editable_decision_or_403(request_id, db)
 
-    if decision is not None:
-        db.query(AuditLog).filter(AuditLog.decision_id == decision.id).delete()
-        db.delete(decision)
-
-    db.delete(expense)
+    expense.deleted_at = datetime.now()
     db.commit()
+
+    if decision is not None:
+        deletion_audit_entry = AuditLog(
+            decision_id=decision.id,
+            event_type="expense_deleted_by_employee",
+            actor_id=user.id,
+            previous_value=f"category={expense.category}, amount={expense.amount}",
+            new_value=None,
+        )
+        db.add(deletion_audit_entry)
+        db.commit()
+
     return RedirectResponse(url="/dashboard", status_code=303)
 
 
@@ -242,7 +259,7 @@ def decisions_report_page(
     query = db.query(Decision).join(ExpenseRequest)
 
     if user.role == UserRole.EMPLOYEE:
-        query = query.filter(ExpenseRequest.employee_id == user.id)
+        query = query.filter(ExpenseRequest.employee_id == user.id, ExpenseRequest.deleted_at.is_(None))
 
     decisions = query.order_by(Decision.id.desc()).all()
 
@@ -291,7 +308,7 @@ def search_decisions_page(
     query = db.query(Decision).join(ExpenseRequest)
 
     if user.role == UserRole.EMPLOYEE:
-        query = query.filter(ExpenseRequest.employee_id == user.id)
+        query = query.filter(ExpenseRequest.employee_id == user.id, ExpenseRequest.deleted_at.is_(None))
 
     if category:
         query = query.filter(ExpenseRequest.category == category)
@@ -313,8 +330,8 @@ def search_decisions_page(
 
     if date_from or date_to:
         query = query.join(AuditLog, AuditLog.decision_id == Decision.id).filter(
-            AuditLog.event_type == "decision_generated_by_llm"
-        )
+            AuditLog.event_type.in_(CREATION_EVENT_TYPES)
+        ).distinct()
         if date_from:
             query = query.filter(AuditLog.created_at >= datetime.fromisoformat(date_from))
         if date_to:

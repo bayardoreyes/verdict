@@ -62,7 +62,7 @@
         <tr>
             <td><a href="/decisions/{{ decision.id }}">{{ decision.id }}</a></td>
             <td>{{ decision.request.employee.email }}</td>
-            <td>{{ decision.request.category }}</td>
+            <td>{{ decision.request.category }}{% if decision.request.deleted_at %} <span class="error">(deleted)</span>{% endif %}</td>
             <td>${{ decision.request.amount }}</td>
             <td>{{ decision.ai_verdict.value }}</td>
             <td>{{ decision.current_status.value }}</td>
