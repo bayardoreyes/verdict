@@ -68,4 +68,32 @@
     <input type="number" name="max_amount" step="0.01" min="0.01" required>
     <button type="submit">Add rule</button>
 </form>
+
+<h3>Policy change history</h3>
+{% if policy_audit_entries %}
+<table class="queue">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Event</th>
+            <th>Actor</th>
+            <th>Previous value</th>
+            <th>New value</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for entry in policy_audit_entries %}
+        <tr>
+            <td>{{ entry.created_at }}</td>
+            <td>{{ entry.event_type }}</td>
+            <td>{{ entry.actor.email if entry.actor else "-" }}</td>
+            <td>{{ entry.previous_value or "-" }}</td>
+            <td>{{ entry.new_value or "-" }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No policy changes recorded yet.</p>
+{% endif %}
 {% endblock %}

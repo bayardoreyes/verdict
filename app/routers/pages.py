@@ -383,10 +383,16 @@ def policy_rules_page(
         .order_by(PolicyRule.rule_code)
         .all()
     )
+    policy_audit_entries = (
+        db.query(AuditLog)
+        .filter(AuditLog.event_type.in_(("policy_rule_created", "policy_rule_edited", "policy_rule_deleted")))
+        .order_by(AuditLog.created_at.desc())
+        .all()
+    )
     return templates.TemplateResponse(
         request,
         "policy_rules.html",
-        {"policy": policy, "rules": rules, "error": error},
+        {"policy": policy, "rules": rules, "error": error, "policy_audit_entries": policy_audit_entries},
     )
 
 
@@ -411,6 +417,18 @@ def create_policy_rule(
             url="/policy-rules?error=A rule with that code already exists for this policy",
             status_code=303,
         )
+    db.refresh(new_rule)
+
+    audit_entry = AuditLog(
+        policy_rule_id=new_rule.id,
+        event_type="policy_rule_created",
+        actor_id=user.id,
+        previous_value=None,
+        new_value=f"rule_code={new_rule.rule_code}, category={category}, max_amount={max_amount}",
+    )
+    db.add(audit_entry)
+    db.commit()
+
     return RedirectResponse(url="/policy-rules", status_code=303)
 
 
@@ -426,9 +444,22 @@ def edit_policy_rule(
     if rule is None:
         raise HTTPException(status_code=404, detail="Rule not found")
 
+    previous_snapshot = f"rule_code={rule.rule_code}, category={rule.category}, max_amount={rule.max_amount}"
+
     rule.category = category
     rule.max_amount = max_amount
     db.commit()
+
+    audit_entry = AuditLog(
+        policy_rule_id=rule.id,
+        event_type="policy_rule_edited",
+        actor_id=user.id,
+        previous_value=previous_snapshot,
+        new_value=f"rule_code={rule.rule_code}, category={category}, max_amount={max_amount}",
+    )
+    db.add(audit_entry)
+    db.commit()
+
     return RedirectResponse(url="/policy-rules", status_code=303)
 
 
@@ -442,8 +473,10 @@ def delete_policy_rule(
     if rule is None:
         raise HTTPException(status_code=404, detail="Rule not found")
 
-    db.delete(rule)
+    previous_snapshot = f"rule_code={rule.rule_code}, category={rule.category}, max_amount={rule.max_amount}"
+
     try:
+        db.delete(rule)
         db.commit()
     except IntegrityError:
         db.rollback()
@@ -451,4 +484,15 @@ def delete_policy_rule(
             url="/policy-rules?error=Cannot delete a rule already cited by past decisions",
             status_code=303,
         )
+
+    audit_entry = AuditLog(
+        policy_rule_id=None,
+        event_type="policy_rule_deleted",
+        actor_id=user.id,
+        previous_value=previous_snapshot,
+        new_value=None,
+    )
+    db.add(audit_entry)
+    db.commit()
+
     return RedirectResponse(url="/policy-rules", status_code=303)
