@@ -6,10 +6,11 @@
 <p>Generated: {{ generated_at }}</p>
 
 {% if agreement_rate is not none %}
-<p><strong>AI / reviewer agreement rate:</strong> {{ agreement_rate }}% ({{ agreed_count }} of {{ firm_count }} firm AI verdicts — Approve/Reject — were kept unchanged by a human)</p>
+<p><strong>AI / reviewer agreement rate:</strong> {{ agreement_rate }}% ({{ agreed_count }} of {{ reviewed_firm_count }} firm AI verdicts that a human reviewer actually acted on were left unchanged)</p>
 {% else %}
-<p><strong>AI / reviewer agreement rate:</strong> No firm AI verdicts (Approve/Reject) exist yet to measure.</p>
+<p><strong>AI / reviewer agreement rate:</strong> No firm AI verdicts have been reviewed by a human yet.</p>
 {% endif %}
+<p><strong>Not yet reviewed:</strong> {{ unreviewed_firm_count }} firm AI verdicts (Approve/Reject) have not been looked at by a human.</p>
 
 <p><strong>Escalated cases:</strong> {{ escalated_count }} total &mdash; {{ escalated_approved_count }} approved, {{ escalated_rejected_count }} rejected, {{ escalated_pending_count }} still pending human review</p>
 

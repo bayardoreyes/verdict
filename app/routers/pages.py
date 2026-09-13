@@ -264,10 +264,14 @@ def decisions_report_page(
     decisions = query.order_by(Decision.id.desc()).all()
 
     firm_decisions = [d for d in decisions if d.ai_verdict != DecisionVerdict.ESCALATE]
-    agreed_firm = [d for d in firm_decisions if d.current_status == d.ai_verdict]
+    reviewed_firm_decisions = [d for d in firm_decisions if d.reviewer_id is not None]
+    agreed_after_review = [d for d in reviewed_firm_decisions if d.current_status == d.ai_verdict]
     agreement_rate = (
-        round(len(agreed_firm) / len(firm_decisions) * 100, 1) if firm_decisions else None
+        round(len(agreed_after_review) / len(reviewed_firm_decisions) * 100, 1)
+        if reviewed_firm_decisions
+        else None
     )
+    unreviewed_firm_count = len(firm_decisions) - len(reviewed_firm_decisions)
 
     escalated = [d for d in decisions if d.ai_verdict == DecisionVerdict.ESCALATE]
     escalated_pending = [d for d in escalated if d.current_status == DecisionVerdict.ESCALATE]
@@ -280,9 +284,10 @@ def decisions_report_page(
         {
             "decisions": decisions,
             "generated_at": datetime.now(),
-            "firm_count": len(firm_decisions),
-            "agreed_count": len(agreed_firm),
+            "reviewed_firm_count": len(reviewed_firm_decisions),
+            "agreed_count": len(agreed_after_review),
             "agreement_rate": agreement_rate,
+            "unreviewed_firm_count": unreviewed_firm_count,
             "escalated_count": len(escalated),
             "escalated_pending_count": len(escalated_pending),
             "escalated_approved_count": len(escalated_approved),
