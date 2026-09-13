@@ -27,7 +27,7 @@
 <p><strong>Reviewed by:</strong> {{ decision.reviewer.email }}</p>
 {% endif %}
 
-{% if user.role.value == "REVIEWER" %}
+{% if user.role.value == "REVIEWER" and not decision.request.deleted_at %}
 <h3>Reviewer actions</h3>
 {% if decision.current_status.value != "APPROVE" %}
 <form class="inline" method="post" action="/decisions/{{ decision.id }}/review">

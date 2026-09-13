@@ -91,7 +91,7 @@ def new_expense_page(
 def new_expense_submit(
     request: Request,
     category: str = Form(...),
-    amount: Decimal = Form(...),
+    amount: Decimal = Form(..., gt=0),
     description: str = Form(""),
     user: User = Depends(require_role_cookie(UserRole.EMPLOYEE)),
     db: Session = Depends(get_db),
@@ -154,7 +154,7 @@ def edit_expense_submit(
     request_id: int,
     request: Request,
     category: str = Form(...),
-    amount: Decimal = Form(...),
+    amount: Decimal = Form(..., gt=0),
     description: str = Form(""),
     user: User = Depends(require_role_cookie(UserRole.EMPLOYEE)),
     db: Session = Depends(get_db),
@@ -400,7 +400,7 @@ def policy_rules_page(
 def create_policy_rule(
     rule_code: str = Form(...),
     category: str = Form(...),
-    max_amount: Decimal = Form(...),
+    max_amount: Decimal = Form(..., gt=0),
     user: User = Depends(require_role_cookie(UserRole.REVIEWER)),
     db: Session = Depends(get_db),
 ):
@@ -436,7 +436,7 @@ def create_policy_rule(
 def edit_policy_rule(
     rule_id: int,
     category: str = Form(...),
-    max_amount: Decimal = Form(...),
+    max_amount: Decimal = Form(..., gt=0),
     user: User = Depends(require_role_cookie(UserRole.REVIEWER)),
     db: Session = Depends(get_db),
 ):
