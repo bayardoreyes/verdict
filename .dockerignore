@@ -1,0 +1,12 @@
+.env
+.git
+.gitignore
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.vscode/
+.idea/
+tests/
+*_cookies.txt
+README.md
