@@ -1,6 +1,6 @@
 # Verdict
 
-An AI-assisted expense reimbursement decision system with a human-in-the-loop review workflow, built as the capstone project for WGU's B.S. Software Engineering program.
+An AI-assisted expense reimbursement decision system with a human-in-the-loop review workflow — designed and built end-to-end, from the data model to the cloud deployment.
 
 ## Live Demo
 
@@ -44,3 +44,31 @@ pip install -r requirements.txt
 ```
 
 Create a `.env` file in the project root:
+
+```
+DATABASE_URL=postgresql://user:pass@localhost:5432/verdict_db
+OPENROUTER_API_KEY=your_key_here
+OPENROUTER_MODEL=openai/gpt-4o-mini
+JWT_SECRET_KEY=any_random_string
+JWT_EXPIRATION_MINUTES=60
+```
+
+Then initialize the database and start the server:
+
+```bash
+python init_db.py
+uvicorn app.main:app --reload
+```
+
+Visit `http://localhost:8000/login`.
+
+### Running with Docker
+
+```bash
+docker build -t verdict-app .
+docker run --env-file .env -p 8000:8000 verdict-app
+```
+
+## Author
+
+Built by [Bayardo Reyes](https://github.com/bayardoreyes).
